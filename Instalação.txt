@@ -1,0 +1,286 @@
+# 🤖 Bot WhatsApp - Agendamento com Google Calendar
+
+Bot inteligente para agendamento automático via WhatsApp integrado ao Google Calendar e Firebase.
+
+## 🎯 Funcionalidades
+
+✅ Agendamento conversacional via WhatsApp  
+✅ Verificação de disponibilidade em tempo real  
+✅ Validação de horário comercial  
+✅ Cancelamento de agendamentos  
+✅ Timeout automático de conversas  
+✅ Suporte a fuso horário  
+✅ Persistência de dados no Firebase  
+
+---
+
+## 📋 Pré-requisitos
+
+- Node.js 18+ instalado
+- Conta Google (para Calendar)
+- Projeto Firebase criado
+- Celular com WhatsApp
+
+---
+
+## 🚀 Instalação Passo a Passo
+
+### 1️⃣ Clone e Instale Dependências
+
+```bash
+git clone <seu-repositorio>
+cd calendario-bot-firebase
+npm install
+```
+
+### 2️⃣ Configure o Firebase
+
+1. Acesse: https://console.firebase.google.com
+2. Crie um novo projeto
+3. Vá em **Configurações > Contas de Serviço**
+4. Clique em **Gerar nova chave privada**
+5. Renomeie o arquivo para `serviceAccountKey.json`
+6. **Coloque na RAIZ do projeto** (mesmo nível do package.json)
+
+### 3️⃣ Configure o Google Calendar API
+
+1. Acesse: https://console.cloud.google.com
+2. Crie um novo projeto ou selecione existente
+3. Ative a **Google Calendar API**
+4. Vá em **Credenciais > Criar Credenciais > ID do Cliente OAuth**
+5. Escolha **Aplicativo da Web**
+6. Em **URIs de redirecionamento autorizados**, adicione:
+   ```
+   http://localhost:3000/oauth2callback
+   ```
+7. Copie o **Client ID** e **Client Secret**
+
+### 4️⃣ Configure as Variáveis de Ambiente
+
+1. Copie o arquivo exemplo:
+```bash
+cp .env.example .env
+```
+
+2. Edite o `.env` com seus dados:
+
+```bash
+# Google Calendar
+GOOGLE_CLIENT_ID=seu-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=seu-client-secret
+GOOGLE_REDIRECT_URL=http://localhost:3000/oauth2callback
+
+# Empresa
+COMPANY_ID=minha_barbearia
+COMPANY_NAME=Minha Barbearia
+
+# Horário de Funcionamento
+BUSINESS_HOURS_START=09:00
+BUSINESS_HOURS_END=18:00
+CLOSED_DAYS=0,1  # 0=Domingo, 1=Segunda
+
+# Configurações
+APPOINTMENT_DURATION_MINUTES=60
+CONVERSATION_TIMEOUT_MINUTES=10
+TIMEZONE=America/Sao_Paulo
+```
+
+### 5️⃣ Autentique com Google
+
+```bash
+npm run auth
+```
+
+Abra no navegador: http://localhost:3000/auth
+
+⚠️ **Se der erro "Refresh Token não recebido":**
+1. Acesse: https://myaccount.google.com/permissions
+2. Remova a permissão do seu aplicativo
+3. Tente novamente
+
+### 6️⃣ Inicie o Bot
+
+```bash
+npm start
+```
+
+Escaneie o QR Code com WhatsApp → **Vincular Dispositivo**
+
+---
+
+## 📱 Como Usar
+
+### Cliente conversa assim:
+
+```
+Cliente: Oi
+Bot: Olá! Para qual dia você gostaria de agendar?
+
+Cliente: Amanhã
+Bot: Perfeito! Qual horário você prefere?
+
+Cliente: 14:00
+Bot: ✅ Agendamento Confirmado!
+     📅 28/11/2024
+     ⏰ 14:00
+```
+
+### Comandos Especiais:
+
+- `cancelar` - Reinicia a conversa
+- `cancelar agendamento` - Remove último agendamento
+- `agendar` - Inicia novo agendamento
+
+---
+
+## 🗂️ Estrutura do Projeto (Corrigida)
+
+```
+projeto/
+├── auth_server.js              ✅ MOVIDO PARA RAIZ
+├── serviceAccountKey.json      ← Colocar aqui
+├── .env                        ← Suas configurações
+├── package.json
+├── services/
+│   ├── firebase.js             ✅ Path corrigido
+│   └── googleClient.js         ✅ Transações + cancelamento
+└── src/
+    ├── bot.js                  ✅ Validações + timeout
+    └── utils/
+        └── dateHelper.js       ✅ Fuso horário + validações
+```
+
+---
+
+## 🔧 Principais Correções
+
+### ✅ Correção 1: Path do Firebase
+```javascript
+// ❌ Antes (errado)
+'../../serviceAccountKey.json'
+
+// ✅ Depois (correto)
+'../serviceAccountKey.json'
+```
+
+### ✅ Correção 2: Validação de Horário
+```javascript
+// Agora valida:
+- Formato (HH:MM)
+- Range (00:00 - 23:59)
+- Horário comercial
+- Dias fechados
+```
+
+### ✅ Correção 3: Fuso Horário Dinâmico
+```javascript
+// Usa date-fns-tz para conversão correta
+const startISO = zonedTimeToUtc(localDateTime, TIMEZONE);
+```
+
+### ✅ Correção 4: Race Condition nos Tokens
+```javascript
+// Usa transação do Firestore
+await db.runTransaction(async (transaction) => {
+  transaction.update(docRef, { googleToken: newToken });
+});
+```
+
+### ✅ Correção 5: Timeout de Conversa
+```javascript
+// Reseta automaticamente após 10 minutos de inatividade
+if (timeSinceLastMessage > CONVERSATION_TIMEOUT) {
+  resetConversation();
+}
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Erro: "serviceAccountKey.json não encontrado"
+- ✅ Verifique se o arquivo está na **raiz** do projeto
+- ✅ Confirme o nome exato: `serviceAccountKey.json`
+
+### Erro: "Conta Google não conectada"
+- ✅ Rode `npm run auth` primeiro
+- ✅ Verifique se o Firebase salvou os tokens
+
+### Bot não responde
+- ✅ Verifique se escaneou o QR Code
+- ✅ Confirme que o celular tem internet
+- ✅ Veja logs no terminal com `npm start`
+
+### "Refresh Token não recebido"
+- ✅ Remova permissões em: https://myaccount.google.com/permissions
+- ✅ Rode `npm run auth` novamente
+
+---
+
+## 📊 Dados Salvos no Firebase
+
+### Collection: `companies`
+```javascript
+{
+  name: "Minha Barbearia",
+  googleRefreshToken: "xxx",
+  googleToken: "xxx",
+  lastTokenUpdate: timestamp
+}
+```
+
+### Collection: `contacts`
+```javascript
+{
+  phoneNumber: "55123456789@c.us",
+  name: "João Silva",
+  conversationStage: "IDLE",
+  lastMessageAt: timestamp,
+  lastAppointment: timestamp
+}
+```
+
+### Collection: `appointments`
+```javascript
+{
+  userId: "55123456789",
+  customerName: "João Silva",
+  date: "2024-11-28",
+  time: "14:00",
+  startISO: "2024-11-28T14:00:00-03:00",
+  eventId: "xxx",
+  status: "confirmed",
+  createdAt: timestamp
+}
+```
+
+---
+
+## 🔐 Segurança
+
+⚠️ **NUNCA COMMITE:**
+- `.env` (adicione ao `.gitignore`)
+- `serviceAccountKey.json`
+- `.wwebjs_auth/` (dados do WhatsApp)
+
+Adicione ao `.gitignore`:
+```
+.env
+serviceAccountKey.json
+.wwebjs_auth/
+node_modules/
+```
+
+---
+
+## 📝 Licença
+
+MIT
+
+---
+
+## 🆘 Suporte
+
+Dúvidas? Abra uma issue no GitHub ou entre em contato.
+
+**Desenvolvido com ❤️ para automatizar agendamentos**

@@ -1,9 +1,8 @@
 const admin = require('firebase-admin');
 const path = require('path');
 
-// Caminho para a chave que você baixou do site do Firebase
-// O arquivo deve estar na RAIZ do projeto, junto com o package.json
-const serviceAccountPath = path.join(__dirname, '../../serviceAccountKey.json');
+// ✅ CORREÇÃO: Path corrigido - voltar apenas 1 nível (de services/ para raiz)
+const serviceAccountPath = path.join(__dirname, '../serviceAccountKey.json');
 
 // Inicializa o Firebase apenas se ainda não estiver ativo
 if (!admin.apps.length) {
@@ -24,4 +23,4 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-module.exports = { db };
+module.exports = { db, admin };
